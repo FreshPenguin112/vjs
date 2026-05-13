@@ -16,6 +16,10 @@ $if x64 {
 	} $else $if windows {
 		#flag @VMODROOT/libs/qjs_win_x64.a
 	}
+} $else {
+	  $if android {
+		#flag @VMODROOT/libs/qjs_termux_arm64.a
+		}
 }
 
 #flag -lpthread -lm
