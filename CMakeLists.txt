@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 
 project(quickjs LANGUAGES C)
 
-if(WIN32)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static")
-endif()
+# =========================
+# FLAGS
+# =========================
 
 set(qjs_cflags -Wall -D_GNU_SOURCE)
 
@@ -23,6 +23,9 @@ else()
     -Wno-unused-but-set-variable)
 endif()
 
+# =========================
+# VERSION
+# =========================
 file(READ quickjs/VERSION QJS_VERSION_STR)
 string(REGEX REPLACE "\n$" "" QJS_VERSION_STR "${QJS_VERSION_STR}")
 
@@ -33,7 +36,7 @@ message(STATUS
 ")
 
 # =========================
-# LIBRARY ONLY
+# LIBRARY ONLY (NO TOOLS)
 # =========================
 add_library(qjs STATIC
   quickjs/cutils.c
@@ -44,9 +47,14 @@ add_library(qjs STATIC
   quickjs/quickjs-libc.c
 )
 
+# =========================
+# CORE PROPERTIES
+# =========================
 set_target_properties(qjs PROPERTIES
   C_STANDARD 11
   C_STANDARD_REQUIRED ON
+  POSITION_INDEPENDENT_CODE ON
+  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )
 
 target_compile_options(qjs PRIVATE ${qjs_cflags})
@@ -65,10 +73,14 @@ target_include_directories(qjs PUBLIC include)
 target_include_directories(qjs PRIVATE quickjs)
 
 # =========================
-# PLATFORM LIBS
+# PLATFORM LIBS (FIXED)
 # =========================
-target_link_libraries(qjs PRIVATE m dl)
 
-if(NOT ANDROID)
-  target_link_libraries(qjs PRIVATE pthread)
+# Android (Bionic): NO pthread linking needed
+if(ANDROID)
+  target_link_libraries(qjs PRIVATE m dl)
+
+# Desktop platforms
+else()
+  target_link_libraries(qjs PRIVATE m dl pthread)
 endif()
