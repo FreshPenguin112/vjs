@@ -53,8 +53,10 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   target_link_libraries(qjs atomic)
 endif()
 
-if(UNIX)
+if(UNIX AND NOT ANDROID)
   target_link_libraries(qjs PRIVATE m dl pthread)
+elseif(ANDROID OR ANDROID_PLATFORM)
+  target_link_libraries(qjs PRIVATE m dl)
 endif()
 
 add_executable(qjsc quickjs/qjsc.c)
