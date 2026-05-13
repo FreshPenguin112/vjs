@@ -1,0 +1,8 @@
+# ninja log v7
+38	1501	1778647828515631486	CMakeFiles/qjs.dir/quickjs/cutils.c.o	4f84fe9752b7a7a6
+42	2884	1778647828519631486	CMakeFiles/qjs.dir/quickjs/libregexp.c.o	b623ab225f04c590
+45	3267	1778647828523631486	CMakeFiles/qjs.dir/quickjs/libunicode.c.o	2ef7f1a3d8a0c220
+46	4588	1778647828523631486	CMakeFiles/qjs.dir/quickjs/quickjs-libc.c.o	a184dce722ba82b6
+41	9975	1778647828519631486	CMakeFiles/qjs.dir/quickjs/libbf.c.o	c7857161880e318c
+45	44278	1778647828523631486	CMakeFiles/qjs.dir/quickjs/quickjs.c.o	d096e137446fac43
+44280	44897	1778647872759631469	libqjs.a	64cafbc28ffecc4f

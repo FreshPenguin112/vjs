@@ -2,9 +2,17 @@ cmake_minimum_required(VERSION 3.16)
 
 project(quickjs LANGUAGES C)
 
+<<<<<<< HEAD
 # =========================
 # FLAGS
 # =========================
+=======
+set(CMAKE_STRIP "")
+
+if(WIN32)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static")
+endif()
+>>>>>>> dcd0af8 (foo)
 
 set(qjs_cflags -Wall -D_GNU_SOURCE)
 

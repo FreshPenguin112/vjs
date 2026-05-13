@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/data/data/com.termux/files/home/.vmodules/vjs/build-termux/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

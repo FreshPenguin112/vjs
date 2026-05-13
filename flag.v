@@ -18,7 +18,7 @@ $if x64 {
 	}
 } $else {
 	  $if android {
-		#flag @VMODROOT/libs/qjs_termux_arm64.a
+		#flag @VMODROOT/build-termux/libqjs.a
 		}
 }
 
