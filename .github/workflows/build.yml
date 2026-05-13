@@ -2,6 +2,7 @@ name: Build QuickJS
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   build:
