@@ -1,78 +1,141 @@
-name: Build
+name: Build QuickJS
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Building QuickJS
-    runs-on: ${{ matrix.platform }}
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
     strategy:
-      matrix:
-        platform: [ubuntu-latest, macos-latest, windows-latest]
       fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            output: qjs_linux_x64
+
+          - name: macos-arm64
+            os: macos-latest
+            output: qjs_macos_arm64
+
+          - name: windows-x64
+            os: windows-latest
+            generator: "MinGW Makefiles"
+            output: qjs_windows_x64
+
+          - name: android-termux-arm64
+            os: ubuntu-latest
+            output: qjs_termux_arm64
+            api: 24
+
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 1
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 1
 
-    - name: Build Linux x64
-      if: matrix.platform == 'ubuntu-latest'
-      run: |
-        sudo rm -rf libs/qjs_linux_x64.a
-        sudo mkdir ./build
-        sudo cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -S ./ -B ./build
-        sudo cmake --build ./build --config Release
-        sudo cp build/libqjs.a libs/qjs_linux_x64.a
-        sudo rm -rf build
-    - name: Create PR For Linux x64 
-      if: matrix.platform == 'ubuntu-latest'
-      uses: peter-evans/create-pull-request@v6
-      with:
-        commit-message: Update Linux x64
-        branch-suffix: random
-        delete-branch: true
-        title: Update Linux x64
+      # =========================
+      # ANDROID NDK (TERMUX)
+      # =========================
+      - name: Install Android NDK (Termux ARM64)
+        if: matrix.name == 'android-termux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
 
-    - name: Build Macos x64
-      if: matrix.platform == 'macos-latest'
-      run: |
-        sudo rm -rf libs/qjs_macos_x64.a
-        sudo mkdir ./build
-        sudo cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -S ./ -B ./build
-        sudo cmake --build ./build --config Release
-        sudo cp build/libqjs.a libs/qjs_macos_x64.a
-        sudo rm -rf build
-    - name: Create PR For Macos x64 
-      if: matrix.platform == 'macos-latest'
-      uses: peter-evans/create-pull-request@v6
-      with:
-        commit-message: Update Macos x64
-        branch-suffix: random
-        delete-branch: true
-        title: Update Macos x64
-    
-    - name: Prepare Windows x64
-      if: matrix.platform == 'windows-latest'
-      shell: cmd
-      run: setx PATH "%PATH%;C:\msys64\mingw64\bin"
-    - name: Build Windows x64
-      if: matrix.platform == 'windows-latest'
-      shell: bash
-      run: |
-        rm -rf ./libs/qjs_win_x64.a
-        mkdir ./build
-        cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -S ./ -B ./build
-        cmake --build ./build --config Release
-        cp build/libqjs.a libs/qjs_win_x64.a
-        rm -rf ./build
-    - name: Create PR For Windows x64 
-      if: matrix.platform == 'windows-latest'
-      uses: peter-evans/create-pull-request@v6
-      with:
-        commit-message: Update Windows x64
-        branch-suffix: random
-        delete-branch: true
-        title: Update Windows x64
+          wget https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
+          unzip android-ndk-r26d-linux.zip -d $HOME
+          echo "NDK=$HOME/android-ndk-r26d" >> $GITHUB_ENV
+
+      # =========================
+      # CONFIGURE (UNIX)
+      # =========================
+      - name: Configure (Unix)
+        if: runner.os != 'Windows' && matrix.name != 'android-termux-arm64'
+        run: |
+          mkdir build
+          cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
+
+      # =========================
+      # CONFIGURE (ANDROID / TERMUX)
+      # =========================
+      - name: Configure (Android ARM64)
+        if: matrix.name == 'android-termux-arm64'
+        run: |
+          mkdir build
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-${{ matrix.api }} \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+
+      # =========================
+      # BUILD (UNIX)
+      # =========================
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cmake --build build --config Release
+
+      # =========================
+      # WINDOWS CONFIGURE
+      # =========================
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir build
+          cmake -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release -S . -B build
+
+      # =========================
+      # WINDOWS BUILD
+      # =========================
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cmake --build build --config Release
+
+      # =========================
+      # PACKAGE (UNIX)
+      # =========================
+      - name: Package (tar.xz)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp build/libqjs.a dist/
+
+          tar -cJf ${{ matrix.output }}.tar.xz -C dist .
+
+      # =========================
+      # PACKAGE (WINDOWS)
+      # =========================
+      - name: Package (zip)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/libqjs.a dist/
+
+          powershell Compress-Archive -Path dist/* -DestinationPath ${{ matrix.output }}.zip
+
+      # =========================
+      # UPLOAD ARTIFACTS
+      # =========================
+      - name: Upload Artifact (Unix)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: ${{ matrix.output }}.tar.xz
+
+      - name: Upload Artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: ${{ matrix.output }}.zip
